@@ -1,33 +1,158 @@
-# Vehicle Detection
-[![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
+##Writeup Template
+###You can use this file as a template for your writeup if you want to submit it as a markdown file, but feel free to use some other method and submit a pdf if you prefer.
 
-
-In this project, your goal is to write a software pipeline to detect vehicles in a video (start with the test_video.mp4 and later implement on full project_video.mp4), but the main output or product we want you to create is a detailed writeup of the project.  Check out the [writeup template](https://github.com/udacity/CarND-Vehicle-Detection/blob/master/writeup_template.md) for this project and use it as a starting point for creating your own writeup.  
-
-Creating a great writeup:
 ---
-A great writeup should include the rubric points as well as your description of how you addressed each point.  You should include a detailed description of the code used in each step (with line-number references and code snippets where necessary), and links to other supporting documents or external references.  You should include images in your writeup to demonstrate how your code works with examples.  
 
-All that said, please be concise!  We're not looking for you to write a book here, just a brief description of how you passed each rubric point, and references to the relevant code :). 
-
-You can submit your writeup in markdown or use another method and submit a pdf instead.
-
-The Project
----
+**Vehicle Detection Project**
 
 The goals / steps of this project are the following:
 
 * Perform a Histogram of Oriented Gradients (HOG) feature extraction on a labeled training set of images and train a classifier Linear SVM classifier
-* Optionally, you can also apply a color transform and append binned color features, as well as histograms of color, to your HOG feature vector. 
-* Note: for those first two steps don't forget to normalize your features and randomize a selection for training and testing.
+* Color transform and append binned color features, as well as histograms of color, to your HOG feature vector. 
 * Implement a sliding-window technique and use your trained classifier to search for vehicles in images.
-* Run your pipeline on a video stream (start with the test_video.mp4 and later implement on full project_video.mp4) and create a heat map of recurring detections frame by frame to reject outliers and follow detected vehicles.
+* Run pipeline on a video stream,
 * Estimate a bounding box for vehicles detected.
 
-Here are links to the labeled data for [vehicle](https://s3.amazonaws.com/udacity-sdc/Vehicle_Tracking/vehicles.zip) and [non-vehicle](https://s3.amazonaws.com/udacity-sdc/Vehicle_Tracking/non-vehicles.zip) examples to train your classifier.  These example images come from a combination of the [GTI vehicle image database](http://www.gti.ssr.upm.es/data/Vehicle_database.html), the [KITTI vision benchmark suite](http://www.cvlibs.net/datasets/kitti/), and examples extracted from the project video itself.   You are welcome and encouraged to take advantage of the recently released [Udacity labeled dataset](https://github.com/udacity/self-driving-car/tree/master/annotations) to augment your training data.  
+[//]: # (Image References)
+[image1]: ./examples/car_not_car.png
+[image2]: ./examples/HOG_example.jpg
+[image3]: ./examples/sliding_windows.jpg
+[image4]: ./examples/sliding_window.jpg
+[image5]: ./examples/bboxes_and_heat.png
+[image6]: ./examples/labels_map.png
+[image7]: ./examples/output_bboxes.png
+[hog]: ./output_images/hog_example1.png
+[windows]: ./output_images/image5_windows.jpg
+[heatmap]: ./output_images/heatmap.png
+[boxes]: ./output_images/boxes.png
+[video1]: https://www.youtube.com/watch?v=7mbs3X2dubc
 
-Some example images for testing your pipeline on single frames are located in the `test_images` folder.  To help the reviewer examine your work, please save examples of the output from each stage of your pipeline in the folder called `ouput_images`, and include them in your writeup for the project by describing what each image shows.    The video called `project_video.mp4` is the video your pipeline should work well on.  
+###Writeup / README
 
-**As an optional challenge** Once you have a working pipeline for vehicle detection, add in your lane-finding algorithm from the last project to do simultaneous lane-finding and vehicle detection!
+###Histogram of Oriented Gradients (HOG)
 
-**If you're feeling ambitious** (also totally optional though), don't stop there!  We encourage you to go out and take video of your own, and show us how you would implement this project on a new video!
+####1. Extract HOG Features
+
+Extract HOG features is located in the utils.py under extract_hog_features function. 
+
+I started by reading in all the `vehicle` and `non-vehicle` images.  Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
+
+![alt text][image1]
+
+I explored the provided data and started experimenting with different parameters for the HOG feature extraction.
+A typical result for this operation looks like this:
+
+![alt text][hog]
+
+####2. Choosing HOG Parameters
+
+To settle on good parameters I did experiments with sample of 2000 training images to arrive with parameters which 
+perform best in the test data set. 
+
+At the end the fallowing was chosen: 
+color_space='YCrCb'
+spatial_size = (16, 16)
+hist_bins = 32
+hist_range = (0, 256)
+orient = 12
+pix_per_cell = 8
+cell_per_block = 2
+hog_channel = 'ALL'
+
+####3. Training
+
+At the end I used a feature vector combining both HOG features and color histogram. 
+By doing so the algorithm was able to perform better and reduced the number of misclassified images.
+
+The training pipeline is located in the utils.py under train function. 
+The training data consisted of around 8500 labeled images for cars and notcars. 
+The sets had a small difference in the count and I chose to exclude some of the images in order to have a full balanced 
+training set. 
+
+Because some images in the data set are sequential and obtained from video I chose to randomize their distribution and 
+split the data in to training and test sets. 
+
+The result was test accuracy of 99% on the test set. 
+
+###Sliding Window Search
+
+####  Sliding Window Search Implementation
+
+Our training was implemented on 64x64x3 images each of which was either a closely cropped image of a car or not a car. 
+In order to detect the cars on a full scale image containing the whole road we need to be able to chop the image into small 
+sized windows (boxes) and check if the box is a car or not. 
+
+Cars could appear large if they are close by or small if they are away. 
+Therefore, we need to define both smaller and larger search windows.
+
+An example search could look like this.
+
+![alt text][image3]
+
+To predict all those windows could take a while and do unnecessary calculation.
+We could easily see that there is no point to search on the top half of the image because there are no flying cars on the market yet. 
+We could also use the information that large windows will be close by and smaller will be away from the car. 
+
+Our windows search is implemented in the find_cars function in detect.py straight on the pipeline implementation. 
+
+After performing a sliding window search and throwing away all the boxes which we found no cars in we get
+this image. 
+
+![alt text][windows]
+
+From this image we could see that the cars are correctly market, but there is also many false positives.
+We could recognize two false positives. 
+
+False positives from bad prediction.
+False positives from overlapping windows. 
+
+To remove the false positives we use a heatmap generation technique and averaging on a few frames in the video pipeline.
+
+
+### Video Implementation
+
+####1. Video Pipeline
+
+Here's a ling of the final video result [video]
+
+The video processing is done in the VideoProcessor class in process_video.py
+
+The video processor stores a few frames and implements a techniques to reduce the false positives. 
+The lane detection stack was also added. 
+
+####2. False Positives Filter
+
+To remove the false positives and obtain a good tracking around vehicles we combine a few frames to produce
+a vehicle detection heatmap. 
+
+Many false positives will be detected on a single frame but won't be found on the next frame. Therefore, 
+if we check for consistency over a few frames we could detect the false positives. 
+
+This technique is implemented in the VideoProcessor.
+
+The heatmap is generated over 3 frames and then only pixels above our threshold are taken into account. 
+
+Here is how a heatmap looks. 
+We could clearly see the 'hot' aread on the right and potential cold false detection on the left. 
+![alt text][heatmap]
+
+Finally, we draw a our boxes around the pixels which pass the threshold.
+
+![alt text][boxes]
+
+---
+
+###Discussion
+
+I am happy with the final result of the project. I see a lot of potential in this technique. 
+I could also see some problem areas where I would like to work more and improve. 
+
+Those include:
+* False positives from the opposite lanes. In my video is clear that we detect cars driving on the opposite lanes. 
+This is not necessary bad as this will be important if the cars were driving in both direction without separator. 
+* It will be useful to only mask the polygon around the lanes as done in the lane detection algorithm. This will further improve on robustness. 
+* We could see that the algorithm has problems separating between two cars while they are visually close to each other. It might be a good idea
+to apply a filter which will compare the two positives for similarity before drawing the heatmap. 
+* Tracking is good but in this algorithm we don't define separate lanes and distance from us. This will be the next step
+in order for then build a control algorithm for the car. 
+
