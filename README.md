@@ -21,7 +21,6 @@ The goals / steps of this project are the following:
 [windows]: ./output_images/image5_windows.jpg
 [heatmap]: ./output_images/heatmap.png
 [boxes]: ./output_images/boxes.png
-[video1]: https://www.youtube.com/watch?v=7mbs3X2dubc
 
 ###Writeup / README
 
@@ -109,7 +108,7 @@ To remove the false positives we use a heatmap generation technique and averagin
 
 ####1. Video Pipeline
 
-Here's a ling of the final video result [video]
+Here's a ling of the final video result: https://www.youtube.com/watch?v=7mbs3X2dubc
 
 The video processing is done in the VideoProcessor class in process_video.py
 
